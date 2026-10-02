@@ -78,6 +78,8 @@ SMTP_PORT=587
 SMTP_USER=your_smtp_user
 SMTP_PASS=your_smtp_password
 EMAIL_FROM=no-reply@yourdomain.com
+# Optional: enables an Ethereal test account with inbound access
+ETHEREAL_API_KEY=your_ethereal_api_key
 APP_URL=http://localhost:3000
 CORS_ORIGINS=http://localhost:3000
 PORT=4000
@@ -88,6 +90,7 @@ Notes:
 - `DB_CONN` (or `MONGODB_URI`) should point to your MongoDB instance.
 - Use a unique, random `JWT_SECRET` of at least 32 characters; do not use the example value in production.
 - SMTP settings are required so registration verification and password reset emails can be sent.
+- Ethereal is for testing: messages are captured instead of delivered to real recipient inboxes. With `SMTP_HOST=smtp.ethereal.email` and `ETHEREAL_API_KEY` set, the app creates a test account through `https://api.nodemailer.com/user` and logs the Ethereal inbox and message-preview URLs. If account creation fails, it logs a warning and tries the configured SMTP credentials. Use a real SMTP provider to deliver to users' inboxes.
 - `APP_URL` is optional; when configured it provides trusted frontend links in emails. Without it, the email contains a token to submit to the API.
 - `CORS_ORIGINS` is a comma-separated allowlist of frontend origins. Requests without an `Origin` header (such as server-to-server calls) are allowed.
 - Set `PORT` to change the HTTP port; the default is `4000`.
@@ -123,10 +126,12 @@ The project exposes routes under the `/api/v1/accounts` prefix.
 - `POST /api/v1/accounts/verify-email` — verify a registered account using a token
 - `POST /api/v1/accounts/authenticate` — log in and receive a JWT + refresh token cookie
 - `POST /api/v1/accounts/refresh-token` — refresh the access token using the refresh token cookie
+- `POST /api/v1/accounts/logout` — revoke the refresh token cookie and log out
 - `POST /api/v1/accounts/revoke-token` — revoke a refresh token
 - `POST /api/v1/accounts/forgot-password` — send a password reset email
 - `POST /api/v1/accounts/validate-reset-token` — validate a reset token
 - `POST /api/v1/accounts/reset-password` — reset the password
+- `GET /api/v1/accounts/me` — get the authenticated account's details
 - `GET /api/v1/accounts` — list accounts (admin only)
 - `GET /api/v1/accounts/:id` — get account details
 - `POST /api/v1/accounts` — create an account (admin only)
@@ -179,7 +184,7 @@ curl -X POST http://localhost:4000/api/v1/accounts/authenticate \
 ## Troubleshooting
 
 - If the app cannot connect to MongoDB, confirm your `DB_CONN` value and ensure MongoDB is active.
-- If email verification/reset emails are not sent, verify the SMTP host, username, password, and port in `.env`.
+- If email verification/reset emails are not sent, verify the SMTP host, username, password, and port in `.env`. For Ethereal, check the message-preview URL printed by the server, or sign in to the configured SMTP account on the Ethereal Messages page. Ethereal does not deliver to real recipient inboxes.
 - If requests return `401 Unauthorized`, confirm the JWT is present and valid.
 - If the API route is not found, check that you are calling the correct `/api/v1/accounts/...` path.
 

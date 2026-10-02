@@ -9,12 +9,14 @@ const accountService = require('./account.service');
 // routes
 router.post('/authenticate', authenticateSchema, authenticate);
 router.post('/refresh-token', refreshToken);
+router.post('/logout', logout);
 router.post('/revoke-token', authorize(), revokeTokenSchema, revokeToken);
 router.post('/register', registerSchema, register);
 router.post('/verify-email', verifyEmailSchema, verifyEmail);
 router.post('/forgot-password', forgotPasswordSchema, forgotPassword);
 router.post('/validate-reset-token', validateResetTokenSchema, validateResetToken);
 router.post('/reset-password', resetPasswordSchema, resetPassword);
+router.get('/me', authorize(), getMe);
 router.get('/', authorize(Role.Admin), getAll);
 router.get('/:id', authorize(), getById);
 router.post('/', authorize(Role.Admin), createSchema, create);
@@ -49,6 +51,17 @@ function refreshToken(req, res, next) {
         .then(({ refreshToken, ...account }) => {
             setTokenCookie(res, refreshToken);
             res.json(account);
+        })
+        .catch(next);
+}
+
+function logout(req, res, next) {
+    const token = req.cookies.refreshToken;
+    const ipAddress = req.ip;
+    accountService.logout({ token, ipAddress })
+        .then(() => {
+            clearTokenCookie(res);
+            res.json({ message: 'Logged out successfully' });
         })
         .catch(next);
 }
@@ -153,8 +166,14 @@ function resetPassword(req, res, next) {
 }
 
 function getAll(req, res, next) {
-    accountService.getAll()
-        .then(accounts => res.json(accounts))
+    accountService.getAll(req.query)
+        .then(result => res.json(result))
+        .catch(next);
+}
+
+function getMe(req, res, next) {
+    accountService.getById(req.user.id)
+        .then(account => res.json(account))
         .catch(next);
 }
 
@@ -246,4 +265,12 @@ function setTokenCookie(res, token) {
         expires: new Date(Date.now() + 7*24*60*60*1000)
     };
     res.cookie('refreshToken', token, cookieOptions);
+}
+
+function clearTokenCookie(res) {
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    });
 }

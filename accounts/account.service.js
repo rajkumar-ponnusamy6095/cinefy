@@ -9,6 +9,7 @@ const Role = require('../_helpers/role');
 module.exports = {
     authenticate,
     refreshToken,
+    logout,
     revokeToken,
     register,
     verifyEmail,
@@ -36,9 +37,9 @@ async function authenticate({ email, password, ipAddress }) {
     // save refresh token
     await refreshToken.save();
 
-    // return basic details and tokens
+    // Return only the email and access token; the refresh token is sent as a cookie.
     return {
-        ...basicDetails(account),
+        email: account.email,
         jwtToken,
         refreshToken: refreshToken.token
     };
@@ -60,9 +61,9 @@ async function refreshToken({ token, ipAddress }) {
     // generate new jwt
     const jwtToken = generateJwtToken(account);
 
-    // return basic details and tokens
+    // Return only the email and access token; the refresh token is sent as a cookie.
     return {
-        ...basicDetails(account),
+        email: account.email,
         jwtToken,
         refreshToken: newRefreshToken.token
     };
@@ -72,6 +73,17 @@ async function revokeToken({ token, ipAddress }) {
     const refreshToken = await getRefreshToken(token);
 
     // revoke token and save
+    refreshToken.revoked = Date.now();
+    refreshToken.revokedByIp = ipAddress;
+    await refreshToken.save();
+}
+
+async function logout({ token, ipAddress }) {
+    if (!token) return;
+
+    const refreshToken = await db.RefreshToken.findOne({ token });
+    if (!refreshToken || !refreshToken.isActive) return;
+
     refreshToken.revoked = Date.now();
     refreshToken.revokedByIp = ipAddress;
     await refreshToken.save();
@@ -154,9 +166,83 @@ async function resetPassword({ token, password }) {
     await db.RefreshToken.deleteMany({ account: account.id });
 }
 
-async function getAll() {
-    const accounts = await db.Account.find();
-    return accounts.map(x => basicDetails(x));
+async function getAll({ search, role, status, department, sortBy = 'id', sortOrder = 'asc', page = 1, limit = 10 } = {}) {
+    const sortableFields = {
+        id: '_id',
+        gender: 'gender',
+        firstName: 'firstName',
+        lastName: 'lastName',
+        email: 'email',
+        phone: 'phone',
+        department: 'department',
+        status: 'status',
+        role: 'role',
+        createdAt: 'createdAt',
+        updated: 'updated'
+    };
+    const sortField = Object.prototype.hasOwnProperty.call(sortableFields, sortBy) && sortableFields[sortBy];
+    if (!sortField) {
+        const error = new Error(`Invalid sort field: ${sortBy}`);
+        error.status = 400;
+        throw error;
+    }
+
+    const requestedPage = Number(page);
+    const requestedLimit = Number(limit);
+    const pageSize = Number.isFinite(requestedLimit)
+        ? Math.min(Math.max(Math.floor(requestedLimit) || 10, 1), 100)
+        : requestedLimit === Infinity ? 100 : 10;
+    const maxPage = Math.floor(Number.MAX_SAFE_INTEGER / pageSize);
+    const pageNumber = Math.min(
+        Number.isFinite(requestedPage) ? Math.max(Math.floor(requestedPage) || 1, 1) : 1,
+        maxPage
+    );
+    const filter = {};
+
+    if (search) {
+        const searchPattern = String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const searchRegex = new RegExp(searchPattern, 'i');
+        filter.$or = [
+            { firstName: searchRegex },
+            { lastName: searchRegex },
+            { email: searchRegex },
+            { department: searchRegex },
+            { phone: searchRegex },
+            {
+                $expr: {
+                    $regexMatch: {
+                        input: { $concat: ['$firstName', ' ', '$lastName'] },
+                        regex: searchPattern,
+                        options: 'i'
+                    }
+                }
+            }
+        ];
+    }
+
+    if (role) filter.role = String(role);
+    if (status) filter.status = String(status);
+    if (department) filter.department = String(department);
+
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    const offset = (pageNumber - 1) * pageSize;
+    const [accounts, total] = await Promise.all([
+        db.Account.find(filter)
+            .sort({ [sortField]: sortDirection })
+            .skip(offset)
+            .limit(pageSize),
+        db.Account.countDocuments(filter)
+    ]);
+
+    return {
+        data: accounts.map(x => basicDetails(x)),
+        pagination: {
+            page: pageNumber,
+            limit: pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize)
+        }
+    };
 }
 
 async function getById(id) {

@@ -10,6 +10,9 @@ function errorHandler(err, req, res, next) {
             const statusCode = err.toLowerCase().endsWith('not found') ? 404 : 400;
             return res.status(statusCode).json({ message: err });
         }
+        case err.code === 'ETHEREAL_API_ERROR':
+            console.error(err);
+            return res.status(502).json({ message: err.message });
         case err.status >= 400 && err.status < 500:
             return res.status(err.status).json({ message: err.message });
         case err.name === 'ValidationError':
