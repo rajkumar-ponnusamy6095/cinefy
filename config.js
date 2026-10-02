@@ -1,9 +1,11 @@
 require('dotenv').config();
 
 const smtpPort = Number(process.env.SMTP_PORT || 587);
+const dbMaxPoolSize = Number(process.env.DB_MAX_POOL_SIZE || 100);
 
 module.exports = {
     connectionString: process.env.MONGODB_URI || process.env.DB_CONN,
+    dbMaxPoolSize,
     secret: process.env.JWT_SECRET,
     emailFrom: process.env.EMAIL_FROM,
     appUrl: process.env.APP_URL,
@@ -44,6 +46,9 @@ module.exports = {
         }
         if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535) {
             throw new Error('PORT must be an integer between 1 and 65535');
+        }
+        if (!Number.isInteger(this.dbMaxPoolSize) || this.dbMaxPoolSize < 1) {
+            throw new Error('DB_MAX_POOL_SIZE must be a positive integer');
         }
         if (this.appUrl) {
             try {

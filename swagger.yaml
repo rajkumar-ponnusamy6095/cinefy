@@ -457,58 +457,102 @@ paths:
   /accounts:
     get:
       summary: Get a list of all accounts
-      description: Restricted to admin users.
+      description: Restricted to admin users. Set pagination=cursor to use keyset pagination by id (including the first page), then pass nextCursor as afterId. Cursor mode omits total counts. The default page mode retains page-number pagination.
       operationId: getAllAccounts
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: pagination
+          description: Select page-number or keyset pagination.
+          schema:
+            type: string
+            enum: [page, cursor]
+            default: page
+        - in: query
+          name: afterId
+          description: Cursor returned as nextCursor by the previous response. Requires pagination=cursor and sorting by id.
+          schema:
+            type: string
+            example: "5eb12e197e06a76ccdefc121"
+        - in: query
+          name: limit
+          description: Page size for cursor or page-number pagination (capped at 100).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
       responses:
         "200":
-          description: An array of all accounts
+          description: Account data and pagination metadata
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      example: "5eb12e197e06a76ccdefc121"
-                    gender:
-                      type: string
-                      example: "female"
-                    firstName:
-                      type: string
-                      example: "Jason"
-                    lastName:
-                      type: string
-                      example: "Watmore"
-                    email:
-                      type: string
-                      example: "jason@example.com"
-                    phone:
-                      type: string
-                      example: "+15551234567"
-                    department:
-                      type: string
-                      enum: [Finance, HR, Engineering, Administration, Operation, Marketing]
-                      example: "Engineering"
-                    status:
-                      type: string
-                      enum: [active, inactive]
-                      example: "active"
-                    role:
-                      type: string
-                      example: "Admin"
-                    createdAt:
-                      type: string
-                      example: "2020-05-05T09:12:57.848Z"
-                    updated:
-                      type: string
-                      example: "2020-05-08T03:11:21.553Z"
-                    isVerified:
-                      type: boolean
-                      example: true
+                type: object
+                required:
+                  - data
+                  - pagination
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "5eb12e197e06a76ccdefc121"
+                        gender:
+                          type: string
+                          example: "female"
+                        firstName:
+                          type: string
+                          example: "Jason"
+                        lastName:
+                          type: string
+                          example: "Watmore"
+                        email:
+                          type: string
+                          example: "jason@example.com"
+                        phone:
+                          type: string
+                          example: "+15551234567"
+                        department:
+                          type: string
+                          enum: [Finance, HR, Engineering, Administration, Operation, Marketing]
+                          example: "Engineering"
+                        status:
+                          type: string
+                          enum: [active, inactive]
+                          example: "active"
+                        role:
+                          type: string
+                          example: "Admin"
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updated:
+                          type: string
+                          format: date-time
+                        isVerified:
+                          type: boolean
+                  pagination:
+                    type: object
+                    description: Cursor mode returns limit, hasMore, and nextCursor. Page mode returns page, limit, total, and totalPages.
+                    properties:
+                      limit:
+                        type: integer
+                      page:
+                        type: integer
+                      total:
+                        type: integer
+                      totalPages:
+                        type: integer
+                      hasMore:
+                        type: boolean
+                      nextCursor:
+                        type: string
+                        nullable: true
         "401":
           $ref: "#/components/responses/UnauthorizedError"
     post:

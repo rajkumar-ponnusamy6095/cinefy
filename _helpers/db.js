@@ -10,7 +10,9 @@ module.exports = {
 };
 
 function connect() {
-    return mongoose.connect(config.connectionString);
+    return mongoose.connect(config.connectionString, {
+        maxPoolSize: config.dbMaxPoolSize
+    });
 }
 
 function disconnect() {

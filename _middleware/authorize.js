@@ -23,16 +23,20 @@ function authorize(roles = []) {
         }
 
         try {
-            const account = await db.Account.findById(decoded.id);
+            const account = await db.Account.findById(decoded.id)
+                .select('_id role')
+                .lean();
             if (!account || (roles.length && !roles.includes(account.role))) {
                 return res.status(401).json({ message: 'Unauthorized' });
             }
 
-            const refreshTokens = await db.RefreshToken.find({ account: account.id });
             req.user = {
-                id: account.id,
+                id: account._id.toString(),
                 role: account.role,
-                ownsToken: refreshToken => refreshTokens.some(item => item.token === refreshToken)
+                ownsToken: async token => Boolean(await db.RefreshToken.exists({
+                    account: account._id,
+                    token
+                }))
             };
             return next();
         } catch (error) {

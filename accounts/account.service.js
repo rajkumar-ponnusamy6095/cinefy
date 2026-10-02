@@ -6,6 +6,21 @@ const sendEmail = require('../_helpers/send-email');
 const db = require('../_helpers/db');
 const Role = require('../_helpers/role');
 
+const basicDetailsFields = [
+    'gender',
+    'firstName',
+    'lastName',
+    'email',
+    'phone',
+    'department',
+    'status',
+    'role',
+    'createdAt',
+    'updated',
+    'verified',
+    'passwordReset'
+].join(' ');
+
 module.exports = {
     authenticate,
     refreshToken,
@@ -166,7 +181,18 @@ async function resetPassword({ token, password }) {
     await db.RefreshToken.deleteMany({ account: account.id });
 }
 
-async function getAll({ search, role, status, department, sortBy = 'id', sortOrder = 'asc', page = 1, limit = 10 } = {}) {
+async function getAll({
+    search,
+    role,
+    status,
+    department,
+    sortBy = 'id',
+    sortOrder = 'asc',
+    page = 1,
+    pagination = 'page',
+    afterId,
+    limit = 10
+} = {}) {
     const sortableFields = {
         id: '_id',
         gender: 'gender',
@@ -225,12 +251,58 @@ async function getAll({ search, role, status, department, sortBy = 'id', sortOrd
     if (department) filter.department = String(department);
 
     const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    if (!['page', 'cursor'].includes(pagination)) {
+        const error = new Error('pagination must be "page" or "cursor"');
+        error.status = 400;
+        throw error;
+    }
+    if (afterId !== undefined && pagination !== 'cursor') {
+        const error = new Error('afterId requires cursor pagination');
+        error.status = 400;
+        throw error;
+    }
+
+    if (pagination === 'cursor') {
+        if (sortBy !== 'id') {
+            const error = new Error('Cursor pagination only supports sorting by id');
+            error.status = 400;
+            throw error;
+        }
+        if (afterId !== undefined && !db.isValidId(afterId)) {
+            const error = new Error('afterId must be a valid account id');
+            error.status = 400;
+            throw error;
+        }
+
+        if (afterId !== undefined) {
+            filter._id = { [sortDirection === 1 ? '$gt' : '$lt']: afterId };
+        }
+        const accounts = await db.Account.find(filter)
+            .sort({ _id: sortDirection })
+            .limit(pageSize + 1)
+            .select(basicDetailsFields)
+            .lean();
+        const hasMore = accounts.length > pageSize;
+        const pageAccounts = hasMore ? accounts.slice(0, pageSize) : accounts;
+
+        return {
+            data: pageAccounts.map(account => basicDetails(account)),
+            pagination: {
+                limit: pageSize,
+                hasMore,
+                nextCursor: hasMore ? pageAccounts[pageAccounts.length - 1]._id.toString() : null
+            }
+        };
+    }
+
     const offset = (pageNumber - 1) * pageSize;
     const [accounts, total] = await Promise.all([
         db.Account.find(filter)
             .sort({ [sortField]: sortDirection })
             .skip(offset)
-            .limit(pageSize),
+            .limit(pageSize)
+            .select(basicDetailsFields)
+            .lean(),
         db.Account.countDocuments(filter)
     ]);
 
@@ -246,7 +318,11 @@ async function getAll({ search, role, status, department, sortBy = 'id', sortOrd
 }
 
 async function getById(id) {
-    const account = await getAccount(id);
+    if (!db.isValidId(id)) throw 'Account not found';
+    const account = await db.Account.findById(id)
+        .select(basicDetailsFields)
+        .lean();
+    if (!account) throw 'Account not found';
     return basicDetails(account);
 }
 
@@ -338,8 +414,32 @@ function randomTokenString() {
 }
 
 function basicDetails(account) {
-    const { id, gender, firstName, lastName, email, phone, department, status, role, createdAt, updated, isVerified } = account;
-    return { id, gender, firstName, lastName, email, phone, department, status, role, createdAt, updated, isVerified };
+    const {
+        gender,
+        firstName,
+        lastName,
+        email,
+        phone,
+        department,
+        status,
+        role,
+        createdAt,
+        updated
+    } = account;
+    return {
+        id: account.id || account._id.toString(),
+        gender,
+        firstName,
+        lastName,
+        email,
+        phone,
+        department,
+        status,
+        role,
+        createdAt,
+        updated,
+        isVerified: account.isVerified ?? Boolean(account.verified || account.passwordReset)
+    };
 }
 
 async function sendVerificationEmail(account) {

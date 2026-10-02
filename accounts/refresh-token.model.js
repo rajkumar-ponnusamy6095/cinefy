@@ -20,4 +20,7 @@ schema.virtual('isActive').get(function () {
     return !this.revoked && !this.isExpired;
 });
 
+schema.index({ account: 1 });
+schema.index({ expires: 1 }, { expireAfterSeconds: 0 });
+
 module.exports = mongoose.model('RefreshToken', schema);

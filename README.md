@@ -73,6 +73,7 @@ copy .env.example .env
 ```env
 JWT_SECRET=replace-with-a-random-secret-at-least-32-characters-long
 DB_CONN=mongodb://localhost:27017/cinefy
+DB_MAX_POOL_SIZE=100
 SMTP_HOST=smtp.ethereal.email
 SMTP_PORT=587
 SMTP_USER=your_smtp_user
@@ -88,6 +89,7 @@ PORT=4000
 Notes:
 
 - `DB_CONN` (or `MONGODB_URI`) should point to your MongoDB instance.
+- `DB_MAX_POOL_SIZE` sets the maximum MongoDB connections per application process (default `100`). Size this against the database connection limit and the total number of application replicas.
 - Use a unique, random `JWT_SECRET` of at least 32 characters; do not use the example value in production.
 - SMTP settings are required so registration verification and password reset emails can be sent.
 - Ethereal is for testing: messages are captured instead of delivered to real recipient inboxes. With `SMTP_HOST=smtp.ethereal.email` and `ETHEREAL_API_KEY` set, the app creates a test account through `https://api.nodemailer.com/user` and logs the Ethereal inbox and message-preview URLs. If account creation fails, it logs a warning and tries the configured SMTP credentials. Use a real SMTP provider to deliver to users' inboxes.
@@ -132,7 +134,7 @@ The project exposes routes under the `/api/v1/accounts` prefix.
 - `POST /api/v1/accounts/validate-reset-token` — validate a reset token
 - `POST /api/v1/accounts/reset-password` — reset the password
 - `GET /api/v1/accounts/me` — get the authenticated account's details
-- `GET /api/v1/accounts` — list accounts (admin only)
+- `GET /api/v1/accounts` — list accounts (admin only; supports `pagination=cursor` keyset pagination)
 - `GET /api/v1/accounts/:id` — get account details
 - `POST /api/v1/accounts` — create an account (admin only)
 - `PUT /api/v1/accounts/:id` — update account
@@ -143,6 +145,15 @@ Protected routes require a bearer token in the `Authorization` header:
 ```http
 Authorization: Bearer <jwtToken>
 ```
+
+For large account collections, use keyset pagination to avoid deep offset scans and exact-count queries:
+
+```text
+GET /api/v1/accounts?pagination=cursor&limit=100
+GET /api/v1/accounts?pagination=cursor&limit=100&afterId=<nextCursor>
+```
+
+Continue while `pagination.hasMore` is `true`, passing `pagination.nextCursor` as `afterId`.
 
 ## Swagger / API docs
 
