@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const schema = new Schema({
-    account: { type: Schema.Types.ObjectId, ref: 'Account' },
-    token: String,
-    expires: Date,
+    account: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+    token: { type: String, required: true, unique: true },
+    expires: { type: Date, required: true },
     created: { type: Date, default: Date.now },
     createdByIp: String,
     revoked: Date,
@@ -13,7 +13,7 @@ const schema = new Schema({
 });
 
 schema.virtual('isExpired').get(function () {
-    return Date.now() >= this.expires;
+    return !this.expires || Date.now() >= this.expires;
 });
 
 schema.virtual('isActive').get(function () {

@@ -1,9 +1,9 @@
 ﻿const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
-const validateRequest = require('_middleware/validate-request');
-const authorize = require('_middleware/authorize')
-const Role = require('_helpers/role');
+const validateRequest = require('../_middleware/validate-request');
+const authorize = require('../_middleware/authorize');
+const Role = require('../_helpers/role');
 const accountService = require('./account.service');
 
 // routes
@@ -25,7 +25,7 @@ module.exports = router;
 
 function authenticateSchema(req, res, next) {
     const schema = Joi.object({
-        email: Joi.string().required(),
+        email: Joi.string().email().lowercase().trim().required(),
         password: Joi.string().required()
     });
     validateRequest(req, next, schema);
@@ -79,10 +79,12 @@ function revokeToken(req, res, next) {
 
 function registerSchema(req, res, next) {
     const schema = Joi.object({
-        gender: Joi.string().required(),
-        firstName: Joi.string().required(),
-        lastName: Joi.string().required(),
-        email: Joi.string().email().required(),
+        gender: Joi.string().trim().required(),
+        firstName: Joi.string().trim().required(),
+        lastName: Joi.string().trim().required(),
+        email: Joi.string().email().lowercase().trim().required(),
+        phone: Joi.string().trim(),
+        department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'),
         password: Joi.string().min(6).required(),
         confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
         acceptTerms: Joi.boolean().valid(true).required()
@@ -91,7 +93,7 @@ function registerSchema(req, res, next) {
 }
 
 function register(req, res, next) {
-    accountService.register(req.body, req.get('origin'))
+    accountService.register(req.body)
         .then(() => res.json({ message: 'Registration successful, please check your email for verification instructions' }))
         .catch(next);
 }
@@ -111,13 +113,13 @@ function verifyEmail(req, res, next) {
 
 function forgotPasswordSchema(req, res, next) {
     const schema = Joi.object({
-        email: Joi.string().email().required()
+        email: Joi.string().email().lowercase().trim().required()
     });
     validateRequest(req, next, schema);
 }
 
 function forgotPassword(req, res, next) {
-    accountService.forgotPassword(req.body, req.get('origin'))
+    accountService.forgotPassword(req.body)
         .then(() => res.json({ message: 'Please check your email for password reset instructions' }))
         .catch(next);
 }
@@ -169,10 +171,13 @@ function getById(req, res, next) {
 
 function createSchema(req, res, next) {
     const schema = Joi.object({
-        gender: Joi.string().required(),
-        firstName: Joi.string().required(),
-        lastName: Joi.string().required(),
-        email: Joi.string().email().required(),
+        gender: Joi.string().trim().required(),
+        firstName: Joi.string().trim().required(),
+        lastName: Joi.string().trim().required(),
+        email: Joi.string().email().lowercase().trim().required(),
+        phone: Joi.string().trim(),
+        department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'),
+        status: Joi.string().valid('active', 'inactive'),
         password: Joi.string().min(6).required(),
         confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
         role: Joi.string().valid(Role.Admin, Role.User).required()
@@ -188,10 +193,13 @@ function create(req, res, next) {
 
 function updateSchema(req, res, next) {
     const schemaRules = {
-        gender: Joi.string().empty(''),
-        firstName: Joi.string().empty(''),
-        lastName: Joi.string().empty(''),
-        email: Joi.string().email().empty(''),
+        gender: Joi.string().trim().empty(''),
+        firstName: Joi.string().trim().empty(''),
+        lastName: Joi.string().trim().empty(''),
+        email: Joi.string().email().lowercase().trim().empty(''),
+        phone: Joi.string().trim().empty(''),
+        department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing').empty(''),
+        status: Joi.string().valid('active', 'inactive').empty(''),
         password: Joi.string().min(6).empty(''),
         confirmPassword: Joi.string().valid(Joi.ref('password')).empty('')
     };
@@ -233,6 +241,8 @@ function setTokenCookie(res, token) {
     // create cookie with refresh token that expires in 7 days
     const cookieOptions = {
         httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         expires: new Date(Date.now() + 7*24*60*60*1000)
     };
     res.cookie('refreshToken', token, cookieOptions);

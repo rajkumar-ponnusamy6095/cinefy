@@ -1,9 +1,14 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+const departments = ['Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'];
+
 const schema = new Schema({
-    email: { type: String, unique: true, required: true },
+    email: { type: String, unique: true, required: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
+    phone: { type: String, trim: true },
+    department: { type: String, enum: departments },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     gender: { type: String, required: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -16,7 +21,13 @@ const schema = new Schema({
         expires: Date
     },
     passwordReset: Date,
-    created: { type: Date, default: Date.now },
+    created: Date,
+    createdAt: {
+        type: Date,
+        default: function () {
+            return this.created || Date.now();
+        }
+    },
     updated: Date
 });
 
@@ -31,6 +42,7 @@ schema.set('toJSON', {
         // remove these props when object is serialized
         delete ret._id;
         delete ret.passwordHash;
+        delete ret.created;
     }
 });
 

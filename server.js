@@ -1,35 +1,79 @@
-require('rootpath')();
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const errorHandler = require('_middleware/error-handler');
+const config = require('./config');
+const db = require('./_helpers/db');
+const errorHandler = require('./_middleware/error-handler');
 const morgan = require('morgan');
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.disable('x-powered-by');
+app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
 app.use(morgan('tiny'));
-// allow cors requests from any origin and with credentials
-app.use(cors({ origin: (origin, callback) => callback(null, true), credentials: true }));
+app.use(cors({
+    origin(origin, callback) {
+        callback(null, !origin || config.corsOrigins.includes(origin));
+    },
+    credentials: true
+}));
 
 // api routes
 app.use('/api/v1/accounts', require('./accounts/account.controller'));
-// app.use('/api/v1/languages', require('./languages/languages.controller'));
-// app.use('/api/v1/directors', require('./directors/directors.controller'));
-// app.use('/api/v1/music-directors', require('./music-directors/music-directors.controller'));
-// app.use('/api/v1/movies', require('./movies/movies.controller'));
 
 // swagger docs route
-app.use('/api-docs', require('_helpers/swagger'));
+app.use('/api-docs', require('./_helpers/swagger'));
 
 // global error handler
 app.use(errorHandler);
 
-// start server
-const port = process.env.NODE_ENV === 'production' ? (process.env.PORT || 80) : 4000;
-app.listen(port, () => {
-    console.log('Server listening on port ' + port);
-});
+async function start() {
+    config.validate();
+    await db.connect();
+
+    const server = app.listen(config.port, () => {
+        console.log(`Server listening on port ${config.port}`);
+    });
+    try {
+        await new Promise((resolve, reject) => {
+            server.once('error', reject);
+            server.once('listening', () => {
+                server.removeListener('error', reject);
+                resolve();
+            });
+        });
+    } catch (error) {
+        await db.disconnect();
+        throw error;
+    }
+
+    const shutdown = async () => {
+        server.close(async error => {
+            if (error) {
+                console.error('Failed to close HTTP server cleanly:', error);
+                process.exitCode = 1;
+            }
+            try {
+                await db.disconnect();
+            } catch (disconnectError) {
+                console.error('Failed to close MongoDB connection cleanly:', disconnectError);
+                process.exitCode = 1;
+            }
+        });
+    };
+
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
+    return server;
+}
+
+if (require.main === module) {
+    start().catch(error => {
+        console.error('Unable to start Cinefy:', error);
+        process.exitCode = 1;
+    });
+}
+
+module.exports = { app, start };
