@@ -200,8 +200,6 @@ function createSchema(req, res, next) {
         phone: Joi.string().trim(),
         department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'),
         status: Joi.string().valid('active', 'inactive'),
-        password: Joi.string().min(6).required(),
-        confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
         role: Joi.string().valid(Role.Admin, Role.User).required()
     });
     validateRequest(req, next, schema);

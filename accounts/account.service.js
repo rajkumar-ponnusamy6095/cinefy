@@ -333,13 +333,19 @@ async function create(params) {
     }
 
     const account = new db.Account(params);
-    account.verified = Date.now();
+    account.resetToken = {
+        token: randomTokenString(),
+        expires: new Date(Date.now() + 24*60*60*1000)
+    };
 
-    // hash password
-    account.passwordHash = await hash(params.password);
+    // Keep a non-usable password hash until the account owner sets their password.
+    account.passwordHash = await hash(randomTokenString());
 
     // save account
     await account.save();
+
+    // Ask the account owner to set a password before they can sign in.
+    await sendPasswordSetupEmail(account);
 
     return basicDetails(account);
 }
@@ -497,6 +503,27 @@ async function sendPasswordResetEmail(account) {
         to: account.email,
         subject: 'Cinefy - Reset Password',
         html: `<h4>Reset Password Email</h4>
+               ${message}`
+    });
+}
+
+async function sendPasswordSetupEmail(account) {
+    let message;
+    if (config.appUrl) {
+        const setPasswordUrl = new URL('/account/reset-password', config.appUrl);
+        setPasswordUrl.searchParams.set('token', account.resetToken.token);
+        message = `<p>Please click the link below to set your password. The link is valid for 1 day:</p>
+                   <p><a href="${setPasswordUrl.href}">${setPasswordUrl.href}</a></p>`;
+    } else {
+        message = `<p>Please use the token below to set your password with the <code>/account/reset-password</code> API route. The token is valid for 1 day:</p>
+                   <p><code>${account.resetToken.token}</code></p>`;
+    }
+
+    await sendEmail({
+        to: account.email,
+        subject: 'Cinefy - Set Password',
+        html: `<h4>Set Your Password</h4>
+               <p>An account has been created for you.</p>
                ${message}`
     });
 }
