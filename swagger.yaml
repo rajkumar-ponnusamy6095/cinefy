@@ -409,7 +409,7 @@ paths:
                     example: "Invalid token"
   /accounts/reset-password:
     post:
-      summary: Reset the password for an account
+      summary: Set or reset the password for an account
       operationId: resetPassword
       requestBody:
         required: true
@@ -454,6 +454,55 @@ paths:
                   message:
                     type: string
                     example: "Invalid token"
+  /accounts/change-password:
+    post:
+      summary: Change the authenticated account's password
+      operationId: changePassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                  example: "currentPass123"
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: "newPass123"
+                confirmPassword:
+                  type: string
+                  description: Must exactly match newPassword.
+                  example: "newPass123"
+              required:
+                - oldPassword
+                - newPassword
+                - confirmPassword
+      responses:
+        "200":
+          description: Password changed successfully and existing refresh tokens were revoked.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Password changed successfully"
+        "400":
+          description: The old password is incorrect or the request body failed validation.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Old password is incorrect"
   /accounts:
     get:
       summary: Get a list of all accounts
@@ -557,7 +606,7 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
     post:
       summary: Create a new account
-      description: Restricted to admin users.
+      description: Restricted to admin users. The new account cannot sign in until its owner sets a password using the emailed link. The password setup link expires after 24 hours.
       operationId: createAccount
       security:
         - bearerAuth: []
@@ -592,14 +641,6 @@ paths:
                   type: string
                   enum: [active, inactive]
                   example: "active"
-                password:
-                  type: string
-                  minLength: 6
-                  example: "pass123"
-                confirmPassword:
-                  type: string
-                  description: Must exactly match password.
-                  example: "pass123"
                 role:
                   type: string
                   enum: [Admin, User]
@@ -608,12 +649,10 @@ paths:
                 - firstName
                 - lastName
                 - email
-                - password
-                - confirmPassword
                 - role
       responses:
         "200":
-          description: Account created successfully, verification is not required for accounts created with this endpoint. The details of the new account are returned.
+          description: Account created successfully and a password setup email has been sent. The details of the new account are returned.
           content:
             application/json:
               schema:
@@ -653,7 +692,7 @@ paths:
                     example: "2020-05-05T09:12:57.848Z"
                   isVerified:
                     type: boolean
-                    example: true
+                    example: false
         "400":
           description: Validation failed or the email is already registered.
           content:

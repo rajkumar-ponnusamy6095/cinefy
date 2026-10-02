@@ -16,6 +16,7 @@ router.post('/verify-email', verifyEmailSchema, verifyEmail);
 router.post('/forgot-password', forgotPasswordSchema, forgotPassword);
 router.post('/validate-reset-token', validateResetTokenSchema, validateResetToken);
 router.post('/reset-password', resetPasswordSchema, resetPassword);
+router.post('/change-password', authorize(), changePasswordSchema, changePassword);
 router.get('/me', authorize(), getMe);
 router.get('/', authorize(Role.Admin), getAll);
 router.get('/:id', authorize(), getById);
@@ -168,6 +169,25 @@ function resetPassword(req, res, next) {
         .catch(next);
 }
 
+function changePasswordSchema(req, res, next) {
+    const schema = Joi.object({
+        oldPassword: Joi.string().required(),
+        newPassword: Joi.string().min(6).required(),
+        confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required()
+    });
+    validateRequest(req, next, schema);
+}
+
+function changePassword(req, res, next) {
+    accountService.changePassword({
+        id: req.user.id,
+        oldPassword: req.body.oldPassword,
+        newPassword: req.body.newPassword
+    })
+        .then(() => res.json({ message: 'Password changed successfully' }))
+        .catch(next);
+}
+
 function getAll(req, res, next) {
     accountService.getAll(req.query)
         .then(result => res.json(result))
@@ -200,8 +220,6 @@ function createSchema(req, res, next) {
         phone: Joi.string().trim(),
         department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'),
         status: Joi.string().valid('active', 'inactive'),
-        password: Joi.string().min(6).required(),
-        confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
         role: Joi.string().valid(Role.Admin, Role.User).required()
     });
     validateRequest(req, next, schema);

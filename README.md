@@ -1,60 +1,75 @@
 ﻿# Cinefy
 
-Cinefy is a Node.js + Express backend API for user authentication and account management. It includes registration, email verification, login, JWT-based access control, refresh-token handling, password reset, and Swagger API documentation.
+Cinefy is a Node.js + Express backend service for authentication, user account management, and role-based access control. The current codebase focuses on the identity layer needed by a movie/music platform, with media catalog endpoints planned for future work.
 
-This project currently focuses on the backend service layer. The movie/music management routes are scaffolded in the project structure but are not implemented in the current codebase.
+## Current implementation
 
-## Project structure
+The API includes:
 
-```text
-cinefy/
-├── accounts/                    # Account auth flows and database models
-│   ├── account.controller.js    # API routes for register/login/reset etc.
-│   ├── account.model.js         # Mongoose schema for user/account records
-│   ├── account.service.js       # Business logic for auth and account actions
-│   ├── refresh-token.model.js   # Refresh token persistence model
-│   └── ...
-├── _helpers/                    # Shared utilities
-│   ├── db.js                    # MongoDB connection + model registry
-│   ├── role.js                 # Role constants (Admin/User)
-│   ├── send-email.js           # Email sender utility
-│   └── swagger.js              # Swagger UI bootstrap
-├── _middleware/                 # Express middlewares
-│   ├── authorize.js            # JWT authorization checks
-│   ├── error-handler.js         # Error response handling
-│   └── validate-request.js     # Joi request validation
-├── .env.example                # Sample environment variables
-├── .gitignore                  # Git ignore rules
-├── config.js                   # Loads environment configuration
-├── LICENSE                     # Project license
-├── package.json                # Project scripts and dependencies
-├── server.js                   # Express app bootstrap and route mounting
-├── swagger.yaml                # OpenAPI definition for the API
-├── README.md                  # Project documentation
-├── package-lock.json           # Dependency lock file
-└── ...
-```
+- account registration with email verification
+- secure login and logout flows
+- JWT access tokens with refresh-token rotation
+- password reset and change-password flows
+- admin and user role checks
+- MongoDB-backed persistence with Mongoose
+- Swagger API docs
+- request validation and centralized error handling
 
 ## Tech stack
 
-- Node.js
+- Node.js 20+
 - Express.js
-- MongoDB with Mongoose
+- MongoDB + Mongoose
 - JWT authentication
 - Refresh token rotation
 - Joi validation
 - Swagger UI
-- Nodemailer for email verification and password resets
+- Nodemailer
+
+## Repository layout
+
+```text
+cinefy/
+├── accounts/                       # Account and auth endpoints
+│   ├── account.controller.js       # Express routes and Joi validation
+│   ├── account.model.js            # Mongoose account schema
+│   ├── account.service.js          # Business logic for auth/account flows
+│   ├── refresh-token.model.js     # Refresh token persistence
+│   └── ...
+├── _helpers/                       # Shared utilities
+│   ├── db.js                      # MongoDB connection and model registry
+│   ├── role.js                    # Role constants
+│   ├── send-email.js              # Email delivery helper
+│   └── swagger.js                 # Swagger UI bootstrap
+├── _middleware/                    # Route guards and request helpers
+│   ├── authorize.js               # Bearer JWT enforcement
+│   ├── error-handler.js           # Centralized error responses
+│   └── validate-request.js        # Request validation wrapper
+├── scripts/                       # Utility scripts
+│   ├── seed-admin-users.js         # Seed five admin accounts
+│   └── seed-pagination-users.js    # Seed sample paginated user accounts
+├── tests/                         # Node test suite
+├── .env.example                   # Sample environment config
+├── .gitignore                     # Git ignore rules
+├── config.js                      # Config loader and validation
+├── LICENSE                        # MIT license
+├── package.json                   # Scripts and dependencies
+├── server.js                      # App bootstrap and route mounting
+├── swagger.yaml                   # OpenAPI specification
+├── README.md                      # Project documentation
+├── package-lock.json              # Dependency lock file
+└── ...
+```
 
 ## Prerequisites
 
 Before running the project, make sure you have:
 
 - Node.js 20.19+ installed
-- MongoDB running locally or a reachable MongoDB Atlas connection
-- An SMTP provider configured for sending verification/reset emails
+- MongoDB running locally or a reachable MongoDB Atlas instance
+- An SMTP provider or Ethereal account for verification and reset emails
 
-## Setup
+## Quick start
 
 1. Install dependencies:
 
@@ -62,25 +77,29 @@ Before running the project, make sure you have:
 npm install
 ```
 
-2. Create a local environment file from the example:
+2. Create a local environment file:
 
 ```bash
 copy .env.example .env
 ```
 
+On macOS/Linux:
+
+```bash
+cp .env.example .env
+```
+
 3. Update the values in `.env`:
 
 ```env
+SMTP_HOST=smtp.example.com
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+EMAIL_FROM=no-reply@example.com
+SMTP_PORT=587
 JWT_SECRET=replace-with-a-random-secret-at-least-32-characters-long
 DB_CONN=mongodb://localhost:27017/cinefy
 DB_MAX_POOL_SIZE=100
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_USER=your_smtp_user
-SMTP_PASS=your_smtp_password
-EMAIL_FROM=no-reply@yourdomain.com
-# Optional: enables an Ethereal test account with inbound access
-ETHEREAL_API_KEY=your_ethereal_api_key
 APP_URL=http://localhost:3000
 CORS_ORIGINS=http://localhost:3000
 PORT=4000
@@ -88,15 +107,12 @@ PORT=4000
 
 Notes:
 
-- `DB_CONN` (or `MONGODB_URI`) should point to your MongoDB instance.
-- `DB_MAX_POOL_SIZE` sets the maximum MongoDB connections per application process (default `100`). Size this against the database connection limit and the total number of application replicas.
-- Use a unique, random `JWT_SECRET` of at least 32 characters; do not use the example value in production.
-- SMTP settings are required so registration verification and password reset emails can be sent.
-- Ethereal is for testing: messages are captured instead of delivered to real recipient inboxes. With `SMTP_HOST=smtp.ethereal.email` and `ETHEREAL_API_KEY` set, the app creates a test account through `https://api.nodemailer.com/user` and logs the Ethereal inbox and message-preview URLs. If account creation fails, it logs a warning and tries the configured SMTP credentials. Use a real SMTP provider to deliver to users' inboxes.
-- `APP_URL` is optional; when configured it provides trusted frontend links in emails. Without it, the email contains a token to submit to the API.
-- `CORS_ORIGINS` is a comma-separated allowlist of frontend origins. Requests without an `Origin` header (such as server-to-server calls) are allowed.
-- Set `PORT` to change the HTTP port; the default is `4000`.
+- `DB_CONN` and `MONGODB_URI` are both accepted by the app; `MONGODB_URI` takes precedence when present.
+- `JWT_SECRET` must be at least 32 characters long.
+- `APP_URL` is optional but recommended for email links and front-end redirects.
+- `CORS_ORIGINS` is a comma-separated allowlist of frontend origins.
 - The first account created is automatically assigned the `Admin` role.
+- `SMTP_HOST=smtp.ethereal.email` is useful for testing email flows without sending messages to real inboxes.
 
 ## Run the project
 
@@ -106,47 +122,64 @@ Start the API in development mode:
 npm run dev
 ```
 
-Or run it normally:
+Or run it directly:
 
 ```bash
 npm start
 ```
 
-By default, the server runs on:
+By default the server listens on:
 
 ```text
 http://localhost:4000
 ```
 
+## Available scripts
+
+```bash
+npm run dev
+npm start
+npm test
+npm run seed:users
+npm run seed:admins
+```
+
+- `npm run dev` starts the server with nodemon for local development.
+- `npm start` starts the Express app in production mode.
+- `npm test` runs the project test suite using Node's built-in test runner.
+- `npm run seed:users` fills the database with sample paginated user accounts.
+- `npm run seed:admins` creates or updates Arun Kumar, Priya Sharma, Vikram Rajan, Sneha Iyer, and Karthik Prasad as admin accounts with `firstname@test.com` emails and `firstname@123` passwords. Use only in a trusted development or test database.
+
 ## API overview
 
-The project exposes routes under the `/api/v1/accounts` prefix.
+The app exposes account routes under the `/api/v1/accounts` prefix.
 
 ### Authentication and account routes
 
 - `POST /api/v1/accounts/register` — create an account and send a verification email
-- `POST /api/v1/accounts/verify-email` — verify a registered account using a token
-- `POST /api/v1/accounts/authenticate` — log in and receive a JWT + refresh token cookie
-- `POST /api/v1/accounts/refresh-token` — refresh the access token using the refresh token cookie
-- `POST /api/v1/accounts/logout` — revoke the refresh token cookie and log out
+- `POST /api/v1/accounts/verify-email` — verify a registered account with a token
+- `POST /api/v1/accounts/authenticate` — log in and receive a JWT plus an HTTP-only refresh token cookie
+- `POST /api/v1/accounts/refresh-token` — rotate the refresh token and return a new JWT
+- `POST /api/v1/accounts/logout` — revoke the current refresh token and clear the cookie
 - `POST /api/v1/accounts/revoke-token` — revoke a refresh token
 - `POST /api/v1/accounts/forgot-password` — send a password reset email
 - `POST /api/v1/accounts/validate-reset-token` — validate a reset token
 - `POST /api/v1/accounts/reset-password` — reset the password
-- `GET /api/v1/accounts/me` — get the authenticated account's details
-- `GET /api/v1/accounts` — list accounts (admin only; supports `pagination=cursor` keyset pagination)
-- `GET /api/v1/accounts/:id` — get account details
+- `POST /api/v1/accounts/change-password` — change the authenticated account password
+- `GET /api/v1/accounts/me` — fetch the current authenticated account
+- `GET /api/v1/accounts` — list accounts (admin only)
+- `GET /api/v1/accounts/:id` — get an account by id
 - `POST /api/v1/accounts` — create an account (admin only)
-- `PUT /api/v1/accounts/:id` — update account
-- `DELETE /api/v1/accounts/:id` — delete account
+- `PUT /api/v1/accounts/:id` — update an account
+- `DELETE /api/v1/accounts/:id` — delete an account
 
 Protected routes require a bearer token in the `Authorization` header:
 
 ```http
-Authorization: Bearer <jwtToken>
+Authorization: Bearer <jwt>
 ```
 
-For large account collections, use keyset pagination to avoid deep offset scans and exact-count queries:
+For large account collections, the service supports keyset pagination:
 
 ```text
 GET /api/v1/accounts?pagination=cursor&limit=100
@@ -155,27 +188,44 @@ GET /api/v1/accounts?pagination=cursor&limit=100&afterId=<nextCursor>
 
 Continue while `pagination.hasMore` is `true`, passing `pagination.nextCursor` as `afterId`.
 
-## Swagger / API docs
+## Swagger documentation
 
-The OpenAPI docs are available in the browser at:
+Open the Swagger UI in a browser at:
 
 ```text
 http://localhost:4000/api-docs
 ```
 
-This is the easiest way to explore available endpoints and payloads.
-
 ## Common usage flow
 
-1. Start MongoDB and the app.
-2. Register a new user via `POST /api/v1/accounts/register`.
-3. Check the email inbox for the verification link/token.
-4. Call `POST /api/v1/accounts/verify-email` with the token.
-5. Log in with `POST /api/v1/accounts/authenticate`.
-6. Use the returned `jwtToken` in the `Authorization` header for further protected requests.
-7. Refresh expired tokens using `POST /api/v1/accounts/refresh-token`.
+1. Start MongoDB and the API.
+2. Register a new account with `POST /api/v1/accounts/register`.
+3. Verify the account using the email link or verification token.
+4. Log in with `POST /api/v1/accounts/authenticate`.
+5. Use the returned `jwtToken` in the `Authorization` header for protected requests.
+6. Refresh tokens using `POST /api/v1/accounts/refresh-token` when they expire.
 
-## Example login request
+## Example requests
+
+### Register
+
+```bash
+curl -X POST http://localhost:4000/api/v1/accounts/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gender": "Male",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "email": "user@example.com",
+    "phone": "+1-555-123-4567",
+    "department": "Engineering",
+    "password": "yourpassword",
+    "confirmPassword": "yourpassword",
+    "acceptTerms": true
+  }'
+```
+
+### Login
 
 ```bash
 curl -X POST http://localhost:4000/api/v1/accounts/authenticate \
@@ -186,18 +236,25 @@ curl -X POST http://localhost:4000/api/v1/accounts/authenticate \
   }'
 ```
 
+### Protected request
+
+```bash
+curl -X GET http://localhost:4000/api/v1/accounts/me \
+  -H "Authorization: Bearer <jwt>
+```
+
 ## Notes
 
-- The project is currently an API service; there is no frontend app in this repository.
-- Movie/music functionality is not yet implemented in the active codebase, although the project is intended to support those modules in the future.
+- This repository contains the backend API only; there is no frontend application in the current codebase.
+- Movie and music functionality is not implemented in the active app, although the project is intended to support those modules in the future.
 - The first user registered automatically becomes the admin user.
 
 ## Troubleshooting
 
-- If the app cannot connect to MongoDB, confirm your `DB_CONN` value and ensure MongoDB is active.
-- If email verification/reset emails are not sent, verify the SMTP host, username, password, and port in `.env`. For Ethereal, check the message-preview URL printed by the server, or sign in to the configured SMTP account on the Ethereal Messages page. Ethereal does not deliver to real recipient inboxes.
-- If requests return `401 Unauthorized`, confirm the JWT is present and valid.
-- If the API route is not found, check that you are calling the correct `/api/v1/accounts/...` path.
+- If MongoDB cannot connect, verify your `DB_CONN` or `MONGODB_URI` value and make sure the database is running.
+- If verification or password-reset emails are not sent, confirm your SMTP configuration in `.env`.
+- If requests return `401 Unauthorized`, check that the `Authorization` header contains a valid Bearer token.
+- If the route is missing, confirm you are hitting the correct `/api/v1/accounts/...` endpoint.
 
 ## License
 
