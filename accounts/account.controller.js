@@ -110,7 +110,8 @@ function registerSchema(req, res, next) {
 }
 
 function register(req, res, next) {
-    accountService.register(req.body)
+    const origin = req.get('origin');
+    accountService.register(req.body, origin)
         .then(() => res.json({ message: 'Registration successful, please check your email for verification instructions' }))
         .catch(next);
 }
@@ -136,7 +137,8 @@ function forgotPasswordSchema(req, res, next) {
 }
 
 function forgotPassword(req, res, next) {
-    accountService.forgotPassword(req.body)
+    const origin = req.get('origin');
+    accountService.forgotPassword(req.body, origin)
         .then(() => res.json({ message: 'Please check your email for password reset instructions' }))
         .catch(next);
 }
@@ -226,7 +228,8 @@ function createSchema(req, res, next) {
 }
 
 function create(req, res, next) {
-    accountService.create(req.body)
+    const origin = req.get('origin');
+    accountService.create(req.body, origin)
         .then(account => res.json(account))
         .catch(next);
 }
