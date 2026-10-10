@@ -532,6 +532,51 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
+        - in: query
+          name: page
+          description: Page number for page-number pagination mode (pagination=page).
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: search
+          description: Case-insensitive free-text search across firstName, lastName, email, department, phone, and full name.
+          schema:
+            type: string
+            example: "jason"
+        - in: query
+          name: role
+          description: Filter by role.
+          schema:
+            type: string
+            enum: [Admin, User]
+        - in: query
+          name: status
+          description: Filter by status.
+          schema:
+            type: string
+            enum: [active, inactive]
+        - in: query
+          name: department
+          description: Filter by department.
+          schema:
+            type: string
+            enum: [Finance, HR, Engineering, Administration, Operation, Marketing]
+        - in: query
+          name: sortBy
+          description: Field to sort by. Cursor pagination only supports sortBy=id.
+          schema:
+            type: string
+            enum: [id, gender, firstName, lastName, email, phone, department, status, role, createdAt, updated]
+            default: id
+        - in: query
+          name: sortOrder
+          description: Sort direction.
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: asc
       responses:
         "200":
           description: Account data and pagination metadata
@@ -602,6 +647,16 @@ paths:
                       nextCursor:
                         type: string
                         nullable: true
+        "400":
+          description: Invalid query parameters, e.g. an invalid sortBy field, an invalid pagination value, afterId without pagination=cursor, cursor pagination with a sortBy other than id, or an invalid afterId.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Invalid sort field: foo"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
     post:
@@ -689,6 +744,7 @@ paths:
                     example: "Admin"
                   createdAt:
                     type: string
+                    format: date-time
                     example: "2020-05-05T09:12:57.848Z"
                   isVerified:
                     type: boolean
@@ -761,9 +817,11 @@ paths:
                     example: "Admin"
                   createdAt:
                     type: string
+                    format: date-time
                     example: "2020-05-05T09:12:57.848Z"
                   updated:
                     type: string
+                    format: date-time
                     example: "2020-05-08T03:11:21.553Z"
                   isVerified:
                     type: boolean
@@ -858,9 +916,11 @@ paths:
                     example: "Admin"
                   createdAt:
                     type: string
+                    format: date-time
                     example: "2020-05-05T09:12:57.848Z"
                   updated:
                     type: string
+                    format: date-time
                     example: "2020-05-08T03:11:21.553Z"
                   isVerified:
                     type: boolean
