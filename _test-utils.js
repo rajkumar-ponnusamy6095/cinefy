@@ -57,7 +57,8 @@ async function invokeRoute(path, method, options = {}) {
     cookies: options.cookies || {},
     headers: options.headers || {},
     ip: options.ip || '127.0.0.1',
-    user: options.user
+    user: options.user,
+    get(name) { return this.headers[name.toLowerCase()]; }
   };
   const res = makeResponse();
   let nextErr;

@@ -6,6 +6,7 @@ test('account.service covers auth, token and password flows', async (t) => {
   const service = require('../accounts/account.service');
   const config = require('../config');
   config.secret = '12345678901234567890123456789012';
+  config.smtpOptions.host = config.smtpOptions.host || 'smtp.example.com';
 
   const accountRecord = {
     _id: { toString: () => 'account-1' },
@@ -92,7 +93,7 @@ test('account.service covers auth, token and password flows', async (t) => {
     static findOne({ token }) {
       const refreshRecord = {
         token,
-        account: { id: 'account-1', email: 'account@example.com' },
+        account: { id: 'account-1', email: 'account@example.com', status: 'active' },
         isActive: true,
         revoked: null,
         expires: new Date(Date.now() + 86400000),
