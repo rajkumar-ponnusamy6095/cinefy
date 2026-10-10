@@ -26,8 +26,11 @@ function authorize(roles = []) {
             const account = await db.Account.findById(decoded.id)
                 .select('_id role')
                 .lean();
-            if (!account || (roles.length && !roles.includes(account.role))) {
+            if (!account) {
                 return res.status(401).json({ message: 'Unauthorized' });
+            }
+            if (roles.length && !roles.includes(account.role)) {
+                return res.status(403).json({ message: 'Insufficient role to access this resource' });
             }
 
             req.user = {

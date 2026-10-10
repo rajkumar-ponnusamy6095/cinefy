@@ -9,8 +9,8 @@ The API includes:
 - account registration with email verification
 - secure login and logout flows
 - JWT access tokens with refresh-token rotation
-- password reset and change-password flows
-- admin and user role checks
+- password reset and change-password flows (passwords need at least 8 characters; reset links expire after 15 minutes)
+- admin and user role checks; inactive accounts cannot log in or refresh tokens
 - MongoDB-backed persistence with Mongoose
 - Swagger API docs
 - request validation and centralized error handling
@@ -254,6 +254,7 @@ curl -X GET http://localhost:4000/api/v1/accounts/me \
 - If MongoDB cannot connect, verify your `DB_CONN` or `MONGODB_URI` value and make sure the database is running.
 - If verification or password-reset emails are not sent, confirm your SMTP configuration in `.env`.
 - If requests return `401 Unauthorized`, check that the `Authorization` header contains a valid Bearer token.
+- If requests return `403 Forbidden`, the token is valid but the account lacks the required role or is not the owner of the target account.
 - If the route is missing, confirm you are hitting the correct `/api/v1/accounts/...` endpoint.
 
 ## License

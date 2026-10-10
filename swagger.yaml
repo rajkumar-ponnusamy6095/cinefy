@@ -12,7 +12,7 @@ paths:
   /accounts/authenticate:
     post:
       summary: Authenticate account credentials and return a JWT token and a cookie with a refresh token
-      description: Accounts must be verified before authenticating. Access tokens expire after 15 minutes; refresh tokens expire after 7 days.
+      description: Accounts must be verified and active before authenticating. Access tokens expire after 15 minutes; refresh tokens expire after 7 days.
       operationId: authenticate
       requestBody:
         required: true
@@ -27,7 +27,7 @@ paths:
                   example: "jason@example.com"
                 password:
                   type: string
-                  example: "pass123"
+                  example: "password123"
               required:
                 - email
                 - password
@@ -61,6 +61,16 @@ paths:
                   message:
                     type: string
                     example: "Email or password is incorrect"
+        "403":
+          description: The account is inactive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Your account is inactive"
   /accounts/refresh-token:
     post:
       summary: Use a refresh token to generate a new JWT token and a new refresh token
@@ -104,6 +114,16 @@ paths:
                   message:
                     type: string
                     example: "Invalid token"
+        "403":
+          description: The account is inactive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Your account is inactive"
   /accounts/logout:
     post:
       summary: Log out the current session
@@ -236,6 +256,8 @@ paths:
                     example: "Token is required"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
   /accounts/register:
     post:
       summary: Register a new user account and send a verification email
@@ -271,12 +293,12 @@ paths:
                   example: "Engineering"
                 password:
                   type: string
-                  minLength: 6
-                  example: "pass123"
+                  minLength: 8
+                  example: "password123"
                 confirmPassword:
                   type: string
                   description: Must exactly match password.
-                  example: "pass123"
+                  example: "password123"
                 acceptTerms:
                   type: boolean
                   enum: [true]
@@ -342,7 +364,7 @@ paths:
                     example: "Verification failed"
   /accounts/forgot-password:
     post:
-      summary: Submit an email address to request a password reset; reset tokens expire after 24 hours
+      summary: Submit an email address to request a password reset; reset tokens expire after 15 minutes
       operationId: forgotPassword
       requestBody:
         required: true
@@ -423,7 +445,7 @@ paths:
                   example: "3c7f8d9c4cb348ff95a0b74a1452aa24fc9611bb76768bb9eafeeb826ddae2935f1880bc7713318f"
                 password:
                   type: string
-                  minLength: 6
+                  minLength: 8
                   example: "newPass123"
                 confirmPassword:
                   type: string
@@ -472,7 +494,7 @@ paths:
                   example: "currentPass123"
                 newPassword:
                   type: string
-                  minLength: 6
+                  minLength: 8
                   example: "newPass123"
                 confirmPassword:
                   type: string
@@ -659,6 +681,8 @@ paths:
                     example: "Invalid sort field: foo"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
     post:
       summary: Create a new account
       description: Restricted to admin users. The new account cannot sign in until its owner sets a password using the emailed link. The password setup link expires after 24 hours.
@@ -763,6 +787,8 @@ paths:
           $ref: "#/components/responses/ConflictError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
   /accounts/{id}:
     parameters:
       - in: path
@@ -830,6 +856,8 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
     put:
       summary: Update an account
       description: Admin users can update any account including role, regular users are restricted to their own account and cannot update role. Password and confirmPassword must be supplied together; all other fields are optional.
@@ -868,12 +896,12 @@ paths:
                   enum: [active, inactive]
                 password:
                   type: string
-                  minLength: 6
-                  example: "pass123"
+                  minLength: 8
+                  example: "password123"
                 confirmPassword:
                   type: string
                   description: Must exactly match password.
-                  example: "pass123"
+                  example: "password123"
                 role:
                   type: string
                   enum: [Admin, User]
@@ -937,6 +965,8 @@ paths:
           $ref: "#/components/responses/ConflictError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
     delete:
       summary: Delete an account
       description: Admin users can delete any account, regular users are restricted to their own account.
@@ -958,6 +988,8 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
 
 components:
   securitySchemes:
@@ -979,7 +1011,7 @@ components:
           schema:
             $ref: "#/components/schemas/Error"
     UnauthorizedError:
-      description: Access token is missing or invalid, or the user does not have access to perform the action
+      description: Access token is missing or invalid, or the account no longer exists
       content:
         application/json:
           schema:
@@ -988,6 +1020,16 @@ components:
               message:
                 type: string
                 example: "Unauthorized"
+    ForbiddenError:
+      description: The user is authenticated but not allowed to perform the action (insufficient role, or not the account owner)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "You can only access your own account"
     NotFoundError:
       description: The account was not found
       content:

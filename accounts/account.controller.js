@@ -84,7 +84,7 @@ async function revokeToken(req, res, next) {
     try {
         // users can revoke their own tokens and admins can revoke any tokens
         if (req.user.role !== Role.Admin && !await req.user.ownsToken(token)) {
-            return res.status(401).json({ message: 'Unauthorized' });
+            return res.status(403).json({ message: 'You can only revoke your own tokens' });
         }
 
         await accountService.revokeToken({ token, ipAddress });
@@ -102,7 +102,7 @@ function registerSchema(req, res, next) {
         email: Joi.string().email().lowercase().trim().required(),
         phone: Joi.string().trim(),
         department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing'),
-        password: Joi.string().min(6).required(),
+        password: Joi.string().min(8).required(),
         confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
         acceptTerms: Joi.boolean().valid(true).required()
     });
@@ -159,7 +159,7 @@ function validateResetToken(req, res, next) {
 function resetPasswordSchema(req, res, next) {
     const schema = Joi.object({
         token: Joi.string().required(),
-        password: Joi.string().min(6).required(),
+        password: Joi.string().min(8).required(),
         confirmPassword: Joi.string().valid(Joi.ref('password')).required()
     });
     validateRequest(req, next, schema);
@@ -174,7 +174,7 @@ function resetPassword(req, res, next) {
 function changePasswordSchema(req, res, next) {
     const schema = Joi.object({
         oldPassword: Joi.string().required(),
-        newPassword: Joi.string().min(6).required(),
+        newPassword: Joi.string().min(8).required(),
         confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required()
     });
     validateRequest(req, next, schema);
@@ -205,7 +205,7 @@ function getMe(req, res, next) {
 function getById(req, res, next) {
     // users can get their own account and admins can get any account
     if (req.params.id !== req.user.id && req.user.role !== Role.Admin) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        return res.status(403).json({ message: 'You can only access your own account' });
     }
 
     accountService.getById(req.params.id)
@@ -243,7 +243,7 @@ function updateSchema(req, res, next) {
         phone: Joi.string().trim().empty(''),
         department: Joi.string().valid('Finance', 'HR', 'Engineering', 'Administration', 'Operation', 'Marketing').empty(''),
         status: Joi.string().valid('active', 'inactive').empty(''),
-        password: Joi.string().min(6).empty(''),
+        password: Joi.string().min(8).empty(''),
         confirmPassword: Joi.string().valid(Joi.ref('password')).empty('')
     };
 
@@ -259,7 +259,7 @@ function updateSchema(req, res, next) {
 function update(req, res, next) {
     // users can update their own account and admins can update any account
     if (req.params.id !== req.user.id && req.user.role !== Role.Admin) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        return res.status(403).json({ message: 'You can only access your own account' });
     }
 
     accountService.update(req.params.id, req.body)
@@ -270,7 +270,7 @@ function update(req, res, next) {
 function _delete(req, res, next) {
     // users can delete their own account and admins can delete any account
     if (req.params.id !== req.user.id && req.user.role !== Role.Admin) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        return res.status(403).json({ message: 'You can only access your own account' });
     }
 
     accountService.delete(req.params.id)
