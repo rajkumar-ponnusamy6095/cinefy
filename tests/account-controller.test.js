@@ -74,7 +74,7 @@ test('account.controller routes invoke all handlers and helper cookies', async (
   await invokeRoute('/verify-email', 'post', { body: { token: 'abc' } });
   await invokeRoute('/forgot-password', 'post', { body: { email: 'user@example.com' } });
   await invokeRoute('/validate-reset-token', 'post', { body: { token: 'abc' } });
-  await invokeRoute('/reset-password', 'post', { body: { token: 'abc', password: 'newpass', confirmPassword: 'newpass' } });
+  await invokeRoute('/reset-password', 'post', { body: { token: 'abc', password: 'newpass123', confirmPassword: 'newpass123' } });
   await invokeRoute('/change-password', 'post', {
     headers: { authorization: '******' },
     user: { id: 'owner-1', role: 'User' },
@@ -84,7 +84,7 @@ test('account.controller routes invoke all handlers and helper cookies', async (
   await invokeRoute('/', 'get', { query: { page: '1' }, headers: { authorization: 'Bearer valid-token' }, user: { role: 'Admin' } });
   await invokeRoute('/:id', 'get', { params: { id: 'owner-1' }, headers: { authorization: 'Bearer valid-token' }, user: { id: 'owner-1', role: 'User' } });
   await invokeRoute('/', 'post', { body: { gender: 'female', firstName: 'X', lastName: 'Y', email: 'x@example.com', password: 'secret', confirmPassword: 'secret', role: 'User' }, headers: { authorization: 'Bearer valid-token' }, user: { role: 'Admin' } });
-  await invokeRoute('/:id', 'put', { params: { id: 'owner-1' }, body: { firstName: 'Updated', password: 'pass123', confirmPassword: 'pass123' }, headers: { authorization: 'Bearer valid-token' }, user: { id: 'owner-1', role: 'User' } });
+  await invokeRoute('/:id', 'put', { params: { id: 'owner-1' }, body: { firstName: 'Updated', password: 'pass1234', confirmPassword: 'pass1234' }, headers: { authorization: 'Bearer valid-token' }, user: { id: 'owner-1', role: 'User' } });
   await invokeRoute('/:id', 'delete', { params: { id: 'owner-1' }, headers: { authorization: 'Bearer valid-token' }, user: { id: 'owner-1', role: 'User' } });
 
   const response = makeResponse();

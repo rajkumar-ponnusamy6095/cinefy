@@ -21,6 +21,8 @@ const basicDetailsFields = [
   "passwordReset",
 ].join(" ");
 
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+
 module.exports = {
   authenticate,
   refreshToken,
@@ -49,6 +51,7 @@ async function authenticate({ email, password, ipAddress }) {
   ) {
     throw "Email or password is incorrect";
   }
+  assertActive(account);
 
   // authentication successful so generate jwt and refresh tokens
   const jwtToken = generateJwtToken(account);
@@ -69,6 +72,12 @@ async function refreshToken({ token, ipAddress }) {
   const refreshToken = await getRefreshToken(token);
   const { account } = refreshToken;
   if (!account) throw "Invalid token";
+  if (account.status !== "active") {
+    refreshToken.revoked = Date.now();
+    refreshToken.revokedByIp = ipAddress;
+    await refreshToken.save();
+    assertActive(account);
+  }
 
   // replace old refresh token with a new one and save
   const newRefreshToken = generateRefreshToken(account, ipAddress);
@@ -150,10 +159,10 @@ async function forgotPassword({ email }, origin) {
   // always return ok response to prevent email enumeration
   if (!account) return;
 
-  // create reset token that expires after 24 hours
+  // create reset token that expires after 15 minutes
   account.resetToken = {
     token: randomTokenString(),
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    expires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
   };
   await account.save();
 
@@ -426,6 +435,14 @@ async function getRefreshToken(token) {
   );
   if (!refreshToken || !refreshToken.isActive) throw "Invalid token";
   return refreshToken;
+}
+
+function assertActive(account) {
+  if (account.status !== "active") {
+    const error = new Error("Your account is inactive");
+    error.status = 403;
+    throw error;
+  }
 }
 
 function hash(password) {
