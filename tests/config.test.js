@@ -8,16 +8,17 @@ test('config.validate accepts valid env values and rejects invalid ones', () => 
     SMTP_USER: 'mailer',
     SMTP_PASS: 'secret',
     EMAIL_FROM: 'no-reply@example.com',
-    APP_URL: 'https://example.com',
+    APP_URL: 'https://app.example.com, https://admin.example.com',
     PORT: '4001',
     DB_MAX_POOL_SIZE: '25',
-    CORS_ORIGINS: 'https://app.example.com, https://admin.example.com'
+    CORS_ORIGIN: 'https://app.example.com, https://admin.example.com'
   };
 
   Object.assign(process.env, validEnv);
   const config = loadFresh('../config');
   assert.equal(config.connectionString, validEnv.MONGODB_URI);
   assert.equal(config.dbMaxPoolSize, 25);
+  assert.deepEqual(config.appUrl, ['https://app.example.com', 'https://admin.example.com']);
   assert.deepEqual(config.corsOrigins, ['https://app.example.com', 'https://admin.example.com']);
   assert.doesNotThrow(() => config.validate());
 

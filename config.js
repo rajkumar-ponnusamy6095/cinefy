@@ -3,17 +3,24 @@ require("dotenv").config();
 const smtpPort = Number(process.env.SMTP_PORT || 587);
 const dbMaxPoolSize = Number(process.env.DB_MAX_POOL_SIZE || 100);
 const parseUrls = (value = "") =>
-  value
-    .split(",")
-    .map((url) => url.trim())
-    .filter(Boolean);
+  [...new Set(value.split(",").map((url) => url.trim()).filter(Boolean))];
+
+const isHttpUrl = (value) => {
+  try {
+    return ["http:", "https:"].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+};
+
+const corsOriginValue = process.env.CORS_ORIGIN ?? process.env.CORS_ORIGINS;
 module.exports = {
   connectionString: process.env.MONGODB_URI || process.env.DB_CONN,
   dbMaxPoolSize,
   secret: process.env.JWT_SECRET,
   emailFrom: process.env.EMAIL_FROM,
   appUrl: parseUrls(process.env.APP_URL),
-  corsOrigins: parseUrls(process.env.CORS_ORIGINS),
+  corsOrigins: parseUrls(corsOriginValue),
   smtpOptions: {
     host: process.env.SMTP_HOST,
     port: smtpPort,
@@ -54,18 +61,11 @@ module.exports = {
     if (!Number.isInteger(this.dbMaxPoolSize) || this.dbMaxPoolSize < 1) {
       throw new Error("DB_MAX_POOL_SIZE must be a positive integer");
     }
-    if (
-      this.appUrl.length &&
-      !this.appUrl.every((appUrl) => {
-        try {
-          const url = new URL(appUrl);
-          return ["http:", "https:"].includes(url.protocol);
-        } catch {
-          return false;
-        }
-      })
-    ) {
+    if (this.appUrl.length && !this.appUrl.every(isHttpUrl)) {
       throw new Error("APP_URL must contain valid HTTP or HTTPS URLs");
+    }
+    if (this.corsOrigins.length && !this.corsOrigins.every(isHttpUrl)) {
+      throw new Error("CORS_ORIGIN must contain valid HTTP or HTTPS URLs");
     }
   },
 };

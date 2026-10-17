@@ -100,8 +100,8 @@ SMTP_PORT=587
 JWT_SECRET=replace-with-a-random-secret-at-least-32-characters-long
 DB_CONN=mongodb://localhost:27017/cinefy
 DB_MAX_POOL_SIZE=100
-APP_URL=http://localhost:3000
-CORS_ORIGINS=http://localhost:3000
+APP_URL=http://localhost:3000,http://localhost:3001
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
 PORT=4000
 ```
 
@@ -110,7 +110,8 @@ Notes:
 - `DB_CONN` and `MONGODB_URI` are both accepted by the app; `MONGODB_URI` takes precedence when present.
 - `JWT_SECRET` must be at least 32 characters long.
 - `APP_URL` is optional but recommended for email links and front-end redirects.
-- `CORS_ORIGINS` is a comma-separated allowlist of frontend origins.
+- `APP_URL` and `CORS_ORIGIN` accept comma-separated URL lists.
+- `CORS_ORIGINS` is also accepted for backwards compatibility.
 - The first account created is automatically assigned the `Admin` role.
 - `SMTP_HOST=smtp.ethereal.email` is useful for testing email flows without sending messages to real inboxes.
 
